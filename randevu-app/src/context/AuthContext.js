@@ -1,11 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { getStorageData, setStorageData, removeStorageData } from '../utils/storage';
+import authService from '../services/authService';
 
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null); // 'customer' veya 'business'
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Uygulama açılışında oturum kontrolü
@@ -15,89 +17,153 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     try {
+      const savedToken = await getStorageData('token');
       const userData = await getStorageData('user');
       const role = await getStorageData('userRole');
 
-      if (userData && role) {
+      if (savedToken && userData && role) {
+        setToken(savedToken);
         setUser(userData);
         setUserRole(role);
+
+        // Token geçerli mi kontrol et (opsiyonel - profil çekerek)
+        try {
+          const profileData = await authService.getProfile();
+          if (profileData.user) {
+            setUser(profileData.user);
+            await setStorageData('user', profileData.user);
+          }
+        } catch (error) {
+          // Token geçersizse temizle
+          console.log('Token geçersiz, temizleniyor...');
+          await clearAuthData();
+        }
       }
     } catch (error) {
       console.error('Auth check error:', error);
+      await clearAuthData();
     } finally {
       setLoading(false);
     }
   };
 
+  // Auth verilerini temizle
+  const clearAuthData = async () => {
+    await removeStorageData('token');
+    await removeStorageData('user');
+    await removeStorageData('userRole');
+    setToken(null);
+    setUser(null);
+    setUserRole(null);
+  };
+
   // Giriş fonksiyonu
   const login = async (email, password, role) => {
     try {
-      // TODO: Gerçek API çağrısı burada yapılacak
-      // Şimdilik mock data
-      const mockUser = {
-        id: '1',
-        email: email,
-        name: email.split('@')[0],
-        role: role,
-      };
+      const response = await authService.login({
+        email,
+        password,
+        role,
+      });
 
-      await setStorageData('user', mockUser);
-      await setStorageData('userRole', role);
+      if (response.user && response.token) {
+        // Token ve user bilgilerini kaydet
+        await setStorageData('token', response.token);
+        await setStorageData('user', response.user);
+        await setStorageData('userRole', response.user.role);
 
-      setUser(mockUser);
-      setUserRole(role);
+        setToken(response.token);
+        setUser(response.user);
+        setUserRole(response.user.role);
 
-      return { success: true };
+        return { success: true };
+      }
+
+      return { success: false, error: 'Giriş başarısız' };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message || 'Giriş sırasında bir hata oluştu'
+      };
     }
   };
 
   // Kayıt fonksiyonu
-  const register = async (email, password, name, role) => {
+  const register = async (email, password, name, role, phone, businessName) => {
     try {
-      // TODO: Gerçek API çağrısı burada yapılacak
-      const mockUser = {
-        id: Date.now().toString(),
-        email: email,
-        name: name,
-        role: role,
-      };
+      const response = await authService.register({
+        email,
+        password,
+        name,
+        role,
+        phone,
+        businessName,
+      });
 
-      await setStorageData('user', mockUser);
-      await setStorageData('userRole', role);
+      if (response.user && response.token) {
+        // Token ve user bilgilerini kaydet
+        await setStorageData('token', response.token);
+        await setStorageData('user', response.user);
+        await setStorageData('userRole', response.user.role);
 
-      setUser(mockUser);
-      setUserRole(role);
+        setToken(response.token);
+        setUser(response.user);
+        setUserRole(response.user.role);
 
-      return { success: true };
+        return { success: true };
+      }
+
+      return { success: false, error: 'Kayıt başarısız' };
     } catch (error) {
       console.error('Register error:', error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message || 'Kayıt sırasında bir hata oluştu'
+      };
     }
   };
 
   // Çıkış fonksiyonu
   const logout = async () => {
     try {
-      await removeStorageData('user');
-      await removeStorageData('userRole');
-      setUser(null);
-      setUserRole(null);
+      await clearAuthData();
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  // Profil güncelleme
+  const updateProfile = async (userData) => {
+    try {
+      const response = await authService.updateProfile(userData);
+
+      if (response.user) {
+        setUser(response.user);
+        await setStorageData('user', response.user);
+        return { success: true };
+      }
+
+      return { success: false, error: 'Profil güncellenemedi' };
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return {
+        success: false,
+        error: error.message || 'Profil güncellenirken bir hata oluştu'
+      };
     }
   };
 
   const value = {
     user,
     userRole,
+    token,
     loading,
     isAuthenticated: !!user,
     login,
     register,
     logout,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
