@@ -6,6 +6,8 @@ import errorHandler from './middlewares/errorHandler.js';
 
 // Routes
 import authRoutes from './routes/authRoutes.js';
+import businessRoutes from './routes/businessRoutes.js';
+import appointmentRoutes from './routes/appointmentRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +36,8 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/businesses', businessRoutes);
+app.use('/api/appointments', appointmentRoutes);
 
 // Error handler (en sonda olmalı)
 app.use(errorHandler);
