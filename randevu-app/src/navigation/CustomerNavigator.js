@@ -1,4 +1,5 @@
 import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../constants/theme';
@@ -7,10 +8,14 @@ import HomeScreen from '../screens/customer/HomeScreen';
 import SearchScreen from '../screens/customer/SearchScreen';
 import AppointmentsScreen from '../screens/customer/AppointmentsScreen';
 import ProfileScreen from '../screens/customer/ProfileScreen';
+import BusinessDetailScreen from '../screens/customer/detail/BusinessDetailScreen';
+import AppointmentBookingScreen from '../screens/customer/detail/AppointmentBookingScreen';
+import AppointmentDetailScreen from '../screens/customer/detail/AppointmentDetailScreen';
 
+const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-export default function CustomerNavigator() {
+function CustomerTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -67,5 +72,20 @@ export default function CustomerNavigator() {
         options={{ tabBarLabel: 'Profil' }}
       />
     </Tab.Navigator>
+  );
+}
+
+export default function CustomerNavigator() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="CustomerTabs" component={CustomerTabs} />
+      <Stack.Screen name="BusinessDetail" component={BusinessDetailScreen} />
+      <Stack.Screen name="AppointmentBooking" component={AppointmentBookingScreen} />
+      <Stack.Screen name="AppointmentDetail" component={AppointmentDetailScreen} />
+    </Stack.Navigator>
   );
 }
